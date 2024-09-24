@@ -298,7 +298,7 @@
             resultsElement.innerHTML = ""; // ล้างข้อมูลเก่า
 
             results.slice(0, 5).forEach(result => {
-                const resultText = `ตำแหน่งใน ${result.name}: ${result.isInside ? 'อยู่ใน' : 'อยู่นอก'}โซน, ระยะทาง: ${result.distance.toFixed(3)} กิโลเมตร`;
+                const resultText = `${result.isInside ? 'อยู่ในพื้นที่ของสาย' : 'ใกล้เคียงสาย'} ${result.name}: , ระยะทาง: ${result.distance.toFixed(3)} กิโลเมตร`;
                 const resultElement = document.createElement('p');
                 resultElement.textContent = resultText;
                 resultsElement.appendChild(resultElement);
