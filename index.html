@@ -25,11 +25,7 @@
     <div id="results"></div>
 
     <script>
-        // ฟังก์ชันสร้างพหุเหลี่ยมจากพิกัด
-        function createZone(coordinates) {
-            coordinates.push(coordinates[0]);  // ปิดพหุเหลี่ยม
-            return turf.polygon([coordinates]);
-        }
+
 
         // สร้างพหุเหลี่ยมโซนต่างๆ
         const zones = [
@@ -258,83 +254,103 @@
             // เพิ่มไปจนถึงโซนที่ 30
         ];
 
-        // เปลี่ยนพิกัดโซนเป็นพหุเหลี่ยม
-        const polygons = zones.map(zone => ({
-            name: zone.name,
-            polygon: createZone(zone.coordinates)
-        }));
+   function cleanCoordinates(coords) {
+      return coords
+        .filter(c =>
+          Array.isArray(c) &&
+          c.length === 2 &&
+          typeof c[0] === 'number' &&
+          typeof c[1] === 'number' &&
+          !isNaN(c[0]) && !isNaN(c[1])
+        )
+        .filter((coord, index, self) =>
+          index === self.findIndex(c =>
+            c[0] === coord[0] && c[1] === coord[1]
+          )
+        );
+    }
 
-        // เมื่อกด submit ฟอร์ม
-        document.getElementById('locationForm').addEventListener('submit', function(event) {
-            event.preventDefault();
+    function createZone(coordinates) {
+      const cleanCoords = cleanCoordinates(coordinates);
+      if (cleanCoords.length < 3) {
+        console.warn("Zone ถูกกรองทิ้ง: พิกัดไม่เพียงพอ", cleanCoords);
+        return null;
+      }
+      cleanCoords.push(cleanCoords[0]); // ปิด polygon
+      return turf.polygon([cleanCoords]);
+    }
 
-            // รับค่าจาก input
-            const latitude = parseFloat(document.getElementById('latitude').value);
-            const longitude = parseFloat(document.getElementById('longitude').value);
+    // สร้าง polygons และกรองที่ error ออก
+    const polygons = zones.map(zone => {
+      const poly = createZone(zone.coordinates);
+      return poly ? { name: zone.name, polygon: poly } : null;
+    }).filter(z => z !== null);
 
-            // สร้างจุดจากพิกัด Lat, Long
-            const point = turf.point([longitude, latitude]);
+    // เมื่อกด submit
+    document.getElementById('locationForm').addEventListener('submit', function (event) {
+      event.preventDefault();
 
-            // สร้าง array เพื่อเก็บผลลัพธ์
-            let results = [];
+      const lat = parseFloat(document.getElementById("latitude").value.trim());
+      const lon = parseFloat(document.getElementById("longitude").value.trim());
 
-            polygons.forEach(zone => {
-                const isInside = turf.booleanPointInPolygon(point, zone.polygon);
-                const distance = turf.pointToLineDistance(point, turf.lineString(zone.polygon.geometry.coordinates[0]), {units: 'kilometers'});
+      if (isNaN(lat) || isNaN(lon)) {
+        alert("กรุณากรอกพิกัดให้ถูกต้อง");
+        return;
+      }
 
-                // เก็บผลลัพธ์ใน array พร้อมข้อมูลระยะทางและสถานะว่าตำแหน่งอยู่ในโซนหรือไม่
-                results.push({
-                    name: zone.name,
-                    isInside: isInside,
-                    distance: distance
-                });
-            });
+      const point = turf.point([lon, lat]);
+      const results = polygons.map(zone => {
+        const isInside = turf.booleanPointInPolygon(point, zone.polygon);
+        const distance = turf.pointToLineDistance(
+          point,
+          turf.lineString(zone.polygon.geometry.coordinates[0]),
+          { units: 'kilometers' }
+        );
+        return {
+          name: zone.name,
+          isInside: isInside,
+          distance: distance
+        };
+      }).sort((a, b) => a.distance - b.distance);
 
-            // จัดเรียงผลลัพธ์ตามระยะทางจากจุดที่ค้นหา
-            results.sort((a, b) => a.distance - b.distance);
+      const resultsElement = document.getElementById("results");
+      resultsElement.innerHTML = "";
+      results.slice(0, 5).forEach(r => {
+        const p = document.createElement("p");
+        p.textContent = `${r.isInside ? "อยู่ในพื้นที่ของสาย" : "ใกล้เคียงสาย"} ${r.name}, ระยะทาง: ${r.distance.toFixed(3)} กม.`;
+        resultsElement.appendChild(p);
+      });
+    });
 
-            // แสดงผลเฉพาะ 5 โซนแรก
-            const resultsElement = document.getElementById('results');
-            resultsElement.innerHTML = ""; // ล้างข้อมูลเก่า
+    // ใช้ตำแหน่งปัจจุบัน
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError);
+      } else {
+        alert("เบราว์เซอร์ไม่รองรับ Geolocation");
+      }
+    }
 
-            results.slice(0, 5).forEach(result => {
-                const resultText = `${result.isInside ? 'อยู่ในพื้นที่ของสาย' : 'ใกล้เคียงสาย'} ${result.name}: , ระยะทาง: ${result.distance.toFixed(3)} กิโลเมตร`;
-                const resultElement = document.createElement('p');
-                resultElement.textContent = resultText;
-                resultsElement.appendChild(resultElement);
-            });
-        });
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(showPosition, showError);
-            } else {
-                alert("Geolocation is not supported by this browser.");
-            }
-        }
+    function showPosition(position) {
+      document.getElementById("latitude").value = position.coords.latitude;
+      document.getElementById("longitude").value = position.coords.longitude;
+    }
 
-        function showPosition(position) {
-            const lat = position.coords.latitude;
-            const long = position.coords.longitude;
-            document.getElementById("latitude").value = lat;
-            document.getElementById("longitude").value = long;
-        }
-
-        function showError(error) {
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    alert("User denied the request for Geolocation.");
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    alert("Location information is unavailable.");
-                    break;
-                case error.TIMEOUT:
-                    alert("The request to get user location timed out.");
-                    break;
-                case error.UNKNOWN_ERROR:
-                    alert("An unknown error occurred.");
-                    break;
-            }
-        }
-    </script>
+    function showError(error) {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          alert("ผู้ใช้ไม่อนุญาตให้เข้าถึงตำแหน่ง");
+          break;
+        case error.POSITION_UNAVAILABLE:
+          alert("ไม่สามารถระบุตำแหน่งได้");
+          break;
+        case error.TIMEOUT:
+          alert("หมดเวลารอข้อมูลตำแหน่ง");
+          break;
+        default:
+          alert("เกิดข้อผิดพลาดไม่ทราบสาเหตุ");
+      }
+    }
+  </script>
 </body>
 </html>
