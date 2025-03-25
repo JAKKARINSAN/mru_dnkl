@@ -9,20 +9,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf"></script>
 </head>
 <body>
-    <h2>ระบุสายจดหน่วย ของ กฟส.นากลางและนาวัง</h2>
-   
-    <form id="locationForm">
-        <button onclick="getLocation()">ตำแหน่งปัจจุบัน</button> <br><br>
-        <label for="latitude">Latitude:</label>
-        <input type="text" id="latitude" ><br><br>
+  <h2>ระบุสายจดหน่วย ของ กฟส.นากลางและนาวัง</h2>
 
-        <label for="longitude">Longitude:</label>
-        <input type="text" id="longitude" ><br><br>
+  <form id="locationForm">
+    <button type="button" onclick="getLocation()">ตำแหน่งปัจจุบัน</button> <br><br>
+    <label for="latitude">Latitude:</label>
+    <input type="text" id="latitude" /><br><br>
 
-        <button type="submit">ตรวจสอบสายจดหน่วยใกล้สุด</button>
-    </form>
+    <label for="longitude">Longitude:</label>
+    <input type="text" id="longitude" /><br><br>
 
-    <div id="results"></div>
+    <button type="submit">ตรวจสอบสายจดหน่วยใกล้สุด</button>
+  </form>
+
+  <div id="results"></div>
 
     <script>
 
